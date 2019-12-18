@@ -1,0 +1,75 @@
+/* Query 1 will List the top 10 Customers who had done maximum number of payments?*/
+
+SELECT DATE_TRUNC('year',pt.payment_date) AS payment,
+       ct.customer_id AS cust_id,
+       ct.first_name||' '||ct.last_name AS full_name,
+       COUNT(*) AS No_of_payments,
+       SUM(pt.amount) AS amount_paid
+FROM customer ct
+JOIN payment pt
+ON ct.customer_id = pt.customer_id
+WHERE pt.payment_date BETWEEN '2007-01-01' AND '2007-12-31'
+GROUP BY 1,2
+ORDER BY 4 DESC
+LIMIT 10;
+
+/* Query 2 will shows Which Film Category is seen most by Customers*/
+
+/*The subquery is used to join all the tables which are required
+to return the rental count of movies based on categories
+ (Animation, Children, Classics, Comedy, Family and Music).*/
+
+WITH sub1 AS
+(SELECT ct.name AS category_name
+FROM film_category fc
+JOIN category ct
+ON fc.category_id = ct.category_id
+JOIN film fm
+ON fm.film_id = fc.film_id
+JOIN inventory ivt
+ON fm.film_id = ivt.film_id
+JOIN rental rt
+ON ivt.inventory_id = rt.inventory_id
+WHERE ct.name IN('Animation','Children','Classics','Comedy','Family','Music'))
+
+SELECT category_name,COUNT(*) AS rental_count
+FROM sub1
+GROUP BY 1
+ORDER BY 1;
+
+/* Query 3 will shows Which Store has More DVD Rental Count by Customers in Year 2005 & 2006*/
+
+WITH sub1
+AS (SELECT
+  DATE_PART('year', rt.rental_date) AS rental_year,
+  sf.store_id AS store_id
+FROM rental rt
+JOIN staff sf
+  ON rt.staff_id = sf.staff_id)
+
+SELECT
+  rental_year,
+  store_id,
+  COUNT(*) AS dvd_rental_count
+FROM sub1
+GROUP BY 1,
+         2
+ORDER BY 3 DESC;
+
+
+/* Query 4 Will shows the Which store has more revenue*/
+
+WITH sub1
+AS (SELECT
+  stf.store_id AS str_id,
+  DATE_TRUNC('year', pt.payment_date) AS payment,
+  SUM(pt.amount) OVER (PARTITION BY stf.store_id, DATE_TRUNC('year', pt.payment_date) ORDER BY pt.payment_date) AS revenue
+FROM payment pt
+JOIN staff stf
+  ON stf.staff_id = pt.staff_id)
+SELECT
+  str_id,
+  SUM(revenue)
+FROM sub1
+GROUP BY 1
+ORDER BY 1 ASC;
